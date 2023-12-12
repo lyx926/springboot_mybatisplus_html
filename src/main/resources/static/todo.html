@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>todo</title>
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@2.12/lib/index.css">
+    <style>
+        .van-cell-group .van-cell {
+            padding: 15px 24px !important;
+        }
+
+        .delete-button {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <!--标题-->
+    <div>
+        <van-nav-bar title="Todo"></van-nav-bar>
+    </div>
+    <!--添加任务-->
+    <div>
+        <van-search left-icon="add-o" v-model="formData.task" placeholder="添加任务" @change="handleAdd()"
+                    clearable="true"></van-search>
+    </div>
+    <!--任务列表-->
+    <div>
+        <van-swipe-cell v-for="item in dataList" :key="item.id" class="van-hairline--top">
+            <van-cell-group :border="false">
+                <van-cell :value="item.task" icon="underway-o"></van-cell>
+            </van-cell-group>
+            <template #right>
+                <van-button square type="danger" text="删除" @click="handleDelete(item)"
+                            class="delete-button"></van-button>
+            </template>
+
+        </van-swipe-cell>
+    </div>
+    <!--空任务-->
+    <div v-if="!dataList.length > 0">
+        <van-empty task="暂无任务"></van-empty>
+    </div>
+    <!--分页-->
+    <div>
+        <van-pagination v-model="pagination.currentPage" :total-items="pagination.total" :show-page-size="5"
+                        @change="handleCurrentChange">
+            <template #prev-text>
+                <van-icon name="arrow-left"></van-icon>
+            </template>
+            <template #next-text>
+                <van-icon name="arrow"></van-icon>
+            </template>
+            <template #page="{ text }">{{ text }}</template>
+        </van-pagination>
+    </div>
+
+</div>
+</body>
+<script src="https://fastly.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://fastly.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+<script src="https://fastly.jsdelivr.net/npm/vant@2.12/lib/vant.min.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            visible: false,
+            dataList: [],//当前页要展示的列表数据
+            dialogFormVisible: false,//添加表单是否可见
+            dialogFormVisibleEdit: false,//编辑表单是否可见
+            formData: {},//表单数据
+            pagination: {//分页相关模型数据
+                currentPage: 1,//当前页码
+                pageSize: 10,//每页显示的记录数
+                total: 0,//总记录数
+                task: ""
+            }
+        },
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            //调用查询全部数据的操作
+            this.getAll();
+        },
+        methods: {
+
+            //条件查询与分页
+            getAll() {
+                //组织参数，拼接url请求地址
+                let param = "?task=" + this.pagination.task;
+                //发送异步请求
+                axios.get("/todos/" + this.pagination.currentPage + "/" + this.pagination.pageSize + param).then((res) => {
+                    this.pagination.pageSize = res.data.data.size;
+                    this.pagination.currentPage = res.data.data.current;
+                    this.pagination.total = res.data.data.total;
+                    this.dataList = res.data.data.records;
+                });
+            },
+            //切换页码
+            handleCurrentChange(currentPage) {
+                //修改页码值为当前选中的页码值
+                this.pagination.currentPage = currentPage;
+                //执行查询
+                this.getAll();
+            },
+            //弹出添加窗口
+            handleCreate() {
+                this.dialogFormVisible = true;
+                this.resetForm();
+            },
+            //重置表单
+            resetForm() {
+                this.formData = {};
+            },
+            //添加
+            handleAdd() {
+                if (this.isNullOrEmpty(this.formData.task)) {
+                    this.$toast('请填写任务');
+                    return
+                }
+                axios.post("/todos", this.formData).then((res) => {
+                    //判断当前操作是否成功
+                    if (res.data.flag) {
+                        //1.关闭弹层
+                        this.dialogFormVisible = false;
+                        this.$toast('添加成功');
+                    } else {
+                        this.$toast('添加失败');
+                    }
+                }).finally(() => {
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            //取消
+            cancel() {
+                this.dialogFormVisible = false;
+                this.dialogFormVisibleEdit = false;
+                this.$message.info("当前操作取消");
+            },
+            // 删除
+            handleDelete(row) {
+                this.$dialog.confirm({
+                    message: '确定删除吗？',
+                }).then(() => {
+                    axios.delete("/todos/" + row.id).then((res) => {
+                        if (res.data.flag) {
+                            this.$toast('删除成功');
+                        } else {
+                            this.$toast('数据同步失败，自动刷新');
+                        }
+                    }).finally(() => {
+                        //2.重新加载数据
+                        this.getAll();
+                    });
+                });
+            },
+            //弹出编辑窗口
+            handleUpdate(row) {
+                axios.get("/todos/" + row.id).then((res) => {
+                    if (res.data.flag && res.data.data != null) {
+                        this.dialogFormVisibleEdit = true;
+                        this.formData = res.data.data;
+                    } else {
+                        this.$message.error("数据同步失败，自动刷新");
+                    }
+                }).finally(() => {
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            //修改
+            handleEdit() {
+                axios.put("/todos", this.formData).then((res) => {
+                    //判断当前操作是否成功
+                    if (res.data.flag) {
+                        //1.关闭弹层
+                        this.dialogFormVisibleEdit = false;
+                        this.$message.success("修改成功");
+                    } else {
+                        this.$message.error("修改失败");
+                    }
+                }).finally(() => {
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            isNullOrEmpty(value) {
+                return value === null || value === undefined || value === '';
+            }
+
+        }
+    })
+
+</script>
+</html>
