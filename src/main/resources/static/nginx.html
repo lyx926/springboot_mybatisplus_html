@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>todo</title>
+    <!--    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@2.12/lib/index.css">-->
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/theme-chalk/index.css">
+    <style>
+        .grid-content {
+            border-radius: 4px;
+            /*min-height: 36px;*/
+        }
+
+        .row-bg {
+            padding: 10px 0;
+            /*background-color: #f9fafc;*/
+        }
+
+        .dashboard-editor-container {
+            /*padding: 32px;*/
+            /*background-color: rgb(240, 242, 245);*/
+            position: relative;
+        }
+
+        .chart-wrapper {
+            background: #fff;
+            padding: 16px 16px 0;
+            /*margin-bottom: 32px;*/
+        }
+
+        @media (max-width: 1024px) {
+            .chart-wrapper {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="dashboard-editor-container">
+        <el-row :gutter="32">
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="containerName" placeholder="容器名称 例:[xxx_nginx]"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="containerCert" placeholder="容器目录 例:[/home/app/xxx_nginx]"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="containerPort" placeholder="容器端口 例:[80]" @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="containerSslPort" placeholder="容器ssl端口 例:[443]自行配置证书"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input model="apiUrl" placeholder="代理地址 例:[http://172.17.0.1]docker网卡ip或公网ip或域名"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="apiPort" placeholder="api后台端口 例:[8080]自行配置/prod-api"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+        </el-row>
+
+        <el-row>
+            <el-col>
+                <el-button type="primary" @click="addServe()">添加子服务 例:[http://127.0.0.1/xxx 和
+                    http://127.0.0.1:801]
+                </el-button>
+            </el-col>
+        </el-row>
+        <el-row>
+            <el-col>
+                <div v-for="(server, i) in servers" :key="i">
+                    <el-input v-model="server.path" placeholder="子服务目录名称 例:[/xxx]" @input="input"/>
+                    <el-input v-model="server.port" placeholder="子服务端口 例:[801]" @input="input"/>
+                    <el-button type="danger" @click="delServe(i)">
+                        删除子服务
+                    </el-button>
+                </div>
+            </el-col>
+        </el-row>
+
+        <el-row>
+            <el-col>
+                <el-button type="primary" @click="addPath">添加卷 例:[-v /home/app/serve_nginx/xxx:/home/xxx]
+                    比如日志、附件、uReport.
+                </el-button>
+            </el-col>
+        </el-row>
+        <el-row>
+            <el-col>
+                <div v-for="(server, i) in servers" :key="i">
+                    <el-input v-model="path.outPath" placeholder="真机卷目录名称 例:[/home/app/serve_nginx/xxx]"
+                              @input="input"/>
+                    <el-input v-model="path.inPath" placeholder="虚拟卷目录名称 例:[/home/xxx]" @input="input"/>
+                    <el-button type="danger" @click="delPath(i)">
+                        删除卷
+                    </el-button>
+                </div>
+            </el-col>
+        </el-row>
+
+        <el-row>
+            <el-col>
+                <el-input type="textarea" autosize placeholder="命令" v-model="command">
+                </el-input>
+            </el-col>
+        </el-row>
+        <el-row>
+            <el-col>
+                <el-input type="textarea" autosize placeholder="命令" v-model="config">
+                </el-input>
+            </el-col>
+        </el-row>
+
+    </div>
+</div>
+</body>
+<!--<script src="https://fastly.jsdelivr.net/npm/axios/dist/axios.min.js"></script>-->
+<script src="https://fastly.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+<!--<script src="https://fastly.jsdelivr.net/npm/vant@2.12/lib/vant.min.js"></script>-->
+<script src="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/index.min.js"></script>
+<script>
+    function StringBuffer() {
+        this.buffer = '';
+    }
+
+    StringBuffer.prototype.append = function (string) {
+        this.buffer += string;
+    };
+
+    StringBuffer.prototype.toString = function () {
+        return this.buffer;
+    };
+
+    new Vue({
+        el: '#app',
+        data: {
+            containerName: "xxx_nginx",
+            containerCert: "/home/app/xxx_nginx",
+            containerPort: "80",
+            containerSslPort: "",
+            apiUrl: "http://172.17.0.1",
+            apiPort: "",
+            servers: [],
+            paths: [],
+            command: "",
+            config: "",
+
+            visible: false,
+            dataList: [], //当前页要展示的列表数据
+            dialogFormVisible: false, //添加表单是否可见
+            dialogFormVisibleEdit: false, //编辑表单是否可见
+            formData: {}, //表单数据
+            pagination: { //分页相关模型数据
+                currentPage: 1, //当前页码
+                pageSize: 10, //每页显示的记录数
+                total: 0, //总记录数
+                task: ""
+            }
+        },
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            //调用查询全部数据的操作
+            // this.getAll();
+        },
+        methods: {
+            addServe() {
+
+                this.servers.push({
+                    path: "/children_server",
+                    port: "801"
+                });
+                console.info(this.servers)
+                console.info('子服务')
+                this.input();
+            },
+            addPath() {
+                this.paths.push({
+                    outPath: "/home/app/serve_nginx/xxx",
+                    inPath: "/home/xxx"
+                });
+                this.input();
+            },
+            delServe(i) {
+                this.servers.splice(i, 1);
+                this.input();
+            },
+            delPath(i) {
+                this.paths.splice(i, 1);
+                this.input();
+            },
+            input() {
+                let sbHtml = new StringBuffer();
+                sbHtml.append("docker run \\\n");
+                sbHtml.append("  --name " + this.containerName + " \\\n");
+                sbHtml.append("  --privileged=true \\\n");
+                sbHtml.append("  --restart=always \\\n");
+                sbHtml.append("  -v " + this.containerCert + "/html:/usr/share/nginx/html \\\n");
+                // 服务目录
+                console.info('this.servers - ' + JSON.stringify(this.servers, null, 4))
+                if (this.servers.length > 0) {
+                    this.servers.forEach((o) => {
+                        console.info('1231231 - ' + JSON.stringify(o, null, 4))
+                        console.info(o.path.length)
+                        console.info(o.path)
+                        if (o.path.length > 0) {
+                            sbHtml.append("  -v " + this.containerCert + "/html" + o.path +
+                                ":/usr/share/nginx/html" + o.path + " \\\n");
+                        }
+                    });
+                }
+                // 卷目录
+                if (this.paths.length > 0) {
+                    this.paths.forEach((o) => {
+                        if (o.outPath.length > 0 && o.inPath.length) {
+                            sbHtml.append("  -v " + o.outPath + ":" + o.inPath + " \\\n");
+                        }
+                    });
+                }
+                sbHtml.append("  -v " + this.containerCert +
+                    "/conf.d/default.conf:/etc/nginx/conf.d/default.conf \\\n");
+                sbHtml.append("  -v " + this.containerCert + "/logs:/var/log/nginx \\\n");
+                // sll目录
+                if (String(this.containerSslPort).length > 0) {
+                    sbHtml.append("  -v " + this.containerCert + "/cert:/etc/nginx/cert \\\n");
+                }
+                sbHtml.append("  -p " + this.containerPort + ":" + this.containerPort + " \\\n");
+                // 子服务端口
+                if (this.servers.length > 0) {
+                    this.servers.forEach((o) => {
+                        if (o.port.length > 0) {
+                            sbHtml.append("  -p " + o.port + ":" + o.port + " \\\n");
+                        }
+                    });
+                }
+                // ssl端口
+                if (String(this.containerSslPort).length > 0) {
+                    sbHtml.append("  -p " + this.containerSslPort + ":443 \\\n");
+                }
+                sbHtml.append("  -e TZ=Asia/Shanghai \\\n");
+                sbHtml.append("  -d nginx:1-alpine-slim");
+                this.command = sbHtml.toString();
+                let sbConfig = new StringBuffer();
+                // ssl配置
+                if (String(this.containerSslPort).length > 0) {
+                    sbConfig.append("server {\n");
+                    sbConfig.append("  listen " + this.containerPort + ";\n");
+                    sbConfig.append("  server_name liuyixiang.xyz;\n");
+                    sbConfig.append("  rewrite ^(.*)$ https://$host$1 permanent;\n");
+                    sbConfig.append("}\n\n");
+                    sbConfig.append("server {\n");
+                    sbConfig.append("  listen " + this.containerSslPort + " ssl;\n");
+                    sbConfig.append("  server_name liuyixiang.xyz;\n");
+                    sbConfig.append("  ssl_certificate /etc/nginx/cert/ssl.crt;\n");
+                    sbConfig.append("  ssl_certificate_key /etc/nginx/cert/ssl.key;\n");
+                    sbConfig.append("  ssl_session_timeout 5m;\n");
+                    sbConfig.append("  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;\n");
+                    sbConfig.append("  ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;\n");
+                    sbConfig.append("  ssl_prefer_server_ciphers on;\n\n");
+                    sbConfig.append("  location / {\n");
+                    sbConfig.append("      root   /usr/share/nginx/html;\n");
+                    sbConfig.append("      index  index.html index.htm;\n");
+                    sbConfig.append("      try_files $uri $uri/ /index.html;\n");
+                    sbConfig.append("  }\n\n");
+                    if (String(this.apiPort).length > 0) {
+                        sbConfig.append("  location /prod-api/ {\n");
+                        sbConfig.append("      proxy_set_header Host $http_host;\n");
+                        sbConfig.append("      proxy_set_header X-Real-IP $remote_addr;\n");
+                        sbConfig.append("      proxy_set_header REMOTE-HOST $remote_addr;\n");
+                        sbConfig.append("      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
+                        sbConfig.append("      proxy_pass " + this.apiUrl + ":" + this.apiPort + "/;\n");
+                        sbConfig.append("  }\n\n");
+                    }
+                    if (this.servers.length > 0) {
+                        this.servers.forEach((o) => {
+                            if (o.path.length > 0) {
+                                sbConfig.append("  location /" + o.path.split("/")[o.path.split("/")
+                                    .length - 1] + " {\n");
+                                sbConfig.append("      alias /usr/share/nginx/html" + o.path + ";\n");
+                                sbConfig.append("      try_files $uri $uri/ /" + o.path.split("/")[o.path
+                                    .split("/").length - 1] + "/index.html;\n");
+                                sbConfig.append("  }\n\n");
+                            }
+                        });
+                    }
+                    sbConfig.append("  error_page   500 502 503 504  /50x.html;\n");
+                    sbConfig.append("  location = /50x.html {\n");
+                    sbConfig.append("      root   /usr/share/nginx/html;\n");
+                    sbConfig.append("  }\n");
+                    sbConfig.append("}");
+                    if (this.servers.length > 0) {
+                        this.servers.forEach((o) => {
+                            if (o.path.length > 0) {
+                                sbConfig.append("\n");
+                                sbConfig.append("\n");
+                                sbConfig.append("server {\n");
+                                sbConfig.append("  listen " + o.port + ";\n");
+                                sbConfig.append("  server_name localhost;\n\n");
+                                sbConfig.append("  location / {\n");
+                                sbConfig.append("      root " + this.containerCert + "/html" + o.path +
+                                    ";\n");
+                                sbConfig.append("      index index.html index.htm;\n");
+                                sbConfig.append("  }\n");
+                                sbConfig.append("}");
+                            }
+                        });
+                    }
+                } else { // 80配置
+                    sbConfig.append("server {\n");
+                    sbConfig.append("  listen " + this.containerPort + ";\n");
+                    sbConfig.append("  server_name localhost;\n\n");
+                    sbConfig.append("  location / {\n");
+                    sbConfig.append("      root   /usr/share/nginx/html;\n");
+                    sbConfig.append("      index  index.html index.htm;\n");
+                    sbConfig.append("      try_files $uri $uri/ /index.html;\n");
+                    sbConfig.append("  }\n\n");
+                    if (String(this.apiPort).length > 0) {
+                        sbConfig.append("  location /prod-api/ {\n");
+                        sbConfig.append("      proxy_set_header Host $http_host;\n");
+                        sbConfig.append("      proxy_set_header X-Real-IP $remote_addr;\n");
+                        sbConfig.append("      proxy_set_header REMOTE-HOST $remote_addr;\n");
+                        sbConfig.append("      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
+                        sbConfig.append("      proxy_pass " + this.apiUrl + ":" + this.apiPort + "/;\n");
+                        sbConfig.append("  }\n\n");
+                    }
+                    if (this.servers.length > 0) {
+                        this.servers.forEach((o) => {
+                            if (o.path.length > 0) {
+                                sbConfig.append("  location /" + o.path.split("/")[o.path.split("/")
+                                    .length - 1] + " {\n");
+                                sbConfig.append("      alias /usr/share/nginx/html" + o.path + ";\n");
+                                sbConfig.append("      try_files $uri $uri/ /" + o.path.split("/")[o.path
+                                    .split("/").length - 1] + "/index.html;\n");
+                                sbConfig.append("  }\n\n");
+                            }
+                        });
+                    }
+                    sbConfig.append("  error_page   500 502 503 504  /50x.html;\n");
+                    sbConfig.append("  location = /50x.html {\n");
+                    sbConfig.append("      root   /usr/share/nginx/html;\n");
+                    sbConfig.append("  }\n");
+                    sbConfig.append("}");
+                    if (this.servers.length > 0) {
+                        this.servers.forEach((o) => {
+                            if (o.path.length > 0) {
+                                sbConfig.append("\n");
+                                sbConfig.append("\n");
+                                sbConfig.append("server {\n");
+                                sbConfig.append("  listen " + o.port + ";\n");
+                                sbConfig.append("  server_name localhost;\n\n");
+                                sbConfig.append("  location / {\n");
+                                sbConfig.append("      root " + this.containerCert + "/html" + o.path +
+                                    ";\n");
+                                sbConfig.append("      index index.html index.htm;\n");
+                                sbConfig.append("  }\n");
+                                sbConfig.append("}");
+                            }
+                        });
+                    }
+                }
+                this.config = sbConfig.toString();
+                // resize()
+            },
+
+            //条件查询与分页
+            getAll() {
+                //组织参数，拼接url请求地址
+                let param = "?task=" + this.pagination.task;
+                //发送异步请求
+                axios.get("/todos/" + this.pagination.currentPage + "/" + this.pagination.pageSize + param).then((
+                    res) => {
+                    this.pagination.pageSize = res.data.data.size;
+                    this.pagination.currentPage = res.data.data.current;
+                    this.pagination.total = res.data.data.total;
+                    this.dataList = res.data.data.records;
+                });
+            },
+            //切换页码
+            handleCurrentChange(currentPage) {
+                //修改页码值为当前选中的页码值
+                this.pagination.currentPage = currentPage;
+                //执行查询
+                this.getAll();
+            },
+            //弹出添加窗口
+            handleCreate() {
+                this.dialogFormVisible = true;
+                this.resetForm();
+            },
+            //重置表单
+            resetForm() {
+                this.formData = {};
+            },
+            //添加
+            handleAdd() {
+                if (this.isNullOrEmpty(this.formData.task)) {
+                    this.$toast('请填写任务');
+                    return
+                }
+                axios.post("/todos", this.formData).then((res) => {
+                    //判断当前操作是否成功
+                    if (res.data.flag) {
+                        //1.关闭弹层
+                        this.dialogFormVisible = false;
+                        this.$toast('添加成功');
+                    } else {
+                        this.$toast('添加失败');
+                    }
+                }).finally(() => {
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            //取消
+            cancel() {
+                this.dialogFormVisible = false;
+                this.dialogFormVisibleEdit = false;
+                this.$message.info("当前操作取消");
+            },
+            // 删除
+            handleDelete(row) {
+                this.$dialog.confirm({
+                    message: '确定删除吗？',
+                }).then(() => {
+                    axios.delete("/todos/" + row.id).then((res) => {
+                        if (res.data.flag) {
+                            this.$toast('删除成功');
+                        } else {
+                            this.$toast('数据同步失败，自动刷新');
+                        }
+                    }).finally(() => {
+                        //2.重新加载数据
+                        this.getAll();
+                    });
+                });
+            },
+            //弹出编辑窗口
+            handleUpdate(row) {
+                axios.get("/todos/" + row.id).then((res) => {
+                    if (res.data.flag && res.data.data != null) {
+                        this.dialogFormVisibleEdit = true;
+                        this.formData = res.data.data;
+                    } else {
+                        this.$message.error("数据同步失败，自动刷新");
+                    }
+                }).finally(() => {
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            //修改
+            handleEdit() {
+                axios.put("/todos", this.formData).then((res) => {
+                    //判断当前操作是否成功
+                    if (res.data.flag) {
+                        //1.关闭弹层
+                        this.dialogFormVisibleEdit = false;
+                        this.$message.success("修改成功");
+                    } else {
+                        this.$message.error("修改失败");
+                    }
+                }).finally(() => {
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            isNullOrEmpty(value) {
+                return value === null || value === undefined || value === '';
+            }
+        }
+    })
+</script>
+</html>
