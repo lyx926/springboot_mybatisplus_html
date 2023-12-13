@@ -1,13 +1,13 @@
-package com.example.book_crud.service.impl;
+package com.example.crud.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.book_crud.dao.TodoDao;
-import com.example.book_crud.domain.Todo;
-import com.example.book_crud.service.TodoService;
+import com.example.crud.dao.TodoDao;
+import com.example.crud.domain.Todo;
+import com.example.crud.service.TodoService;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.stereotype.Service;
 
@@ -47,18 +47,14 @@ public class TodoServiceImpl extends ServiceImpl<TodoDao, Todo> implements TodoS
 
     @Override
     public IPage<Todo> getPage(int currentPage, int pageSize) {
-        IPage page = new Page(currentPage, pageSize);
-        todoDao.selectPage(page, null);
-        return page;
+        return todoDao.selectPage(new Page(currentPage, pageSize), null);
     }
 
     @Override
     public IPage<Todo> getPage(int currentPage, int pageSize, Todo todo) {
-        LambdaQueryWrapper<Todo> lqw = new LambdaQueryWrapper<Todo>();
+        LambdaQueryWrapper<Todo> lqw = new LambdaQueryWrapper<>();
         lqw.like(Strings.isNotEmpty(todo.getTask()), Todo::getTask, todo.getTask());
         lqw.orderByDesc(Todo::getId);
-        IPage page = new Page(currentPage, pageSize);
-        todoDao.selectPage(page, lqw);
-        return page;
+        return todoDao.selectPage(new Page(currentPage, pageSize), lqw);
     }
 }

@@ -1,7 +1,7 @@
-package com.example.book_crud.dao;
+package com.example.crud.dao;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.book_crud.domain.Todo;
+import com.example.crud.domain.Todo;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

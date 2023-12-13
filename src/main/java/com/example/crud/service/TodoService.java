@@ -1,8 +1,8 @@
-package com.example.book_crud.service;
+package com.example.crud.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.book_crud.domain.Todo;
+import com.example.crud.domain.Todo;
 
 /**
  * @author lyx

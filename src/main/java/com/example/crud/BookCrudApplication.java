@@ -1,4 +1,4 @@
-package com.example.book_crud;
+package com.example.crud;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
