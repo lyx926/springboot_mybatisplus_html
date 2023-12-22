@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>docker_jar</title>
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/theme-chalk/index.css">
+    <style>
+        .dashboard-editor-container {
+            position: relative;
+        }
+
+        .chart-wrapper {
+            padding: 16px 16px 0;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-wrapper {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="dashboard-editor-container">
+        <el-row :gutter="32">
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="name" placeholder="容器名称 例:[xxx_jar]"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="jar" placeholder="容器目录 例:[/home/app/xxx_jar]"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+            <el-col :xs="24" :sm="24" :lg="8">
+                <div class="chart-wrapper">
+                    <el-input v-model="port" placeholder="容器端口 例:[8080]"
+                              @input="input()"></el-input>
+                </div>
+            </el-col>
+
+        </el-row>
+
+        <el-row :gutter="32">
+            <el-col :xs="24" :sm="24" :lg="24">
+                <div class="chart-wrapper">
+                    <el-input type="textarea" autosize placeholder="docker run 命令" v-model="command">
+                    </el-input>
+                </div>
+            </el-col>
+        </el-row>
+    </div>
+</div>
+</body>
+<script src="https://fastly.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+<script src="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/index.min.js"></script>
+<script>
+    function StringBuffer() {
+        this.buffer = "";
+    }
+
+    StringBuffer.prototype.append = function (string) {
+        this.buffer += string;
+    };
+    StringBuffer.prototype.toString = function () {
+        return this.buffer;
+    };
+    new Vue({
+        el: '#app',
+        data: {
+            name: 'xxx_jar',
+            jar: '/home/app/xxx_jar/jar',
+            port: '8080',
+            command: '',
+        },
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            //调用查询全部数据的操作
+        },
+        methods: {
+            input() {
+                let sbHtml = new StringBuffer();
+                sbHtml.append('docker run \\\n')
+                sbHtml.append(`  --name ${this.name} \\\n`)
+                sbHtml.append('  --privileged=true \\\n')
+                sbHtml.append('  --restart=always \\\n')
+                sbHtml.append(`  -v ${this.jar}:/root \\\n`)
+                sbHtml.append(`  -p ${this.port}:8080 \\\n`)
+                sbHtml.append('  -e TZ=Asia/Shanghai \\\n')
+                sbHtml.append('  -d 15588855251/webjar')
+                this.command = sbHtml.toString();
+            },
+        }
+    })
+</script>
+</html>

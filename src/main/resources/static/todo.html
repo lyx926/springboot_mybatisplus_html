@@ -27,7 +27,7 @@
     <!--添加任务-->
     <div>
         <van-search left-icon="add-o" v-model="formData.task" placeholder="添加任务" @change="handleAdd()"
-                    clearable="true"></van-search>
+                    clearable="true" ref="task"></van-search>
     </div>
     <!--任务列表-->
     <div>
@@ -85,6 +85,14 @@
         created() {
             //调用查询全部数据的操作
             this.getAll();
+        },
+        mounted() {
+            // this.$refs.searchVal.focus();
+            this.$nextTick(() => {
+                //使用$nextTick或setTimeout处理触发弹框自动获取焦点延迟的问题
+                this.$refs.task.querySelector('input').focus();
+            });
+
         },
         methods: {
 
