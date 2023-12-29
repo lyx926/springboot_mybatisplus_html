@@ -5,3 +5,6 @@ sudo tee /etc/docker/daemon.json <<-'EOF'
   "registry-mirrors": ["https://1197heba.mirror.aliyuncs.com"]
 }
 EOF
+
+tee a/b.txt <<-'EOF'
+EOF

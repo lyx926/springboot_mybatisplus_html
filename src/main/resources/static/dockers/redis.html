@@ -1,11 +1,123 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+<!doctype html>
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>redis</title>
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge" http-equiv="X-UA-Compatible">
+    <title>docker_redis</title>
+    <link href="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/theme-chalk/index.css" rel="stylesheet">
+    <style>
+        .dashboard-editor-container {
+            position: relative;
+        }
+
+        .chart-wrapper {
+            padding: 16px 16px 0;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-wrapper {
+                padding: 8px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>redis</h1>
+<div id="app">
+    <div class="dashboard-editor-container">
+        <el-row :gutter="32">
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input($event,1)" placeholder="容器名称 例:[x_redis]"
+                              v-model="name"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input($event,2)" placeholder="容器目录 例:[/home/app/x_redis]"
+                              v-model="redis"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="容器端口 例:[8080]"
+                              v-model="port"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="容器密码 例:[system]"
+                              v-model="pwd"></el-input>
+                </div>
+            </el-col>
+
+        </el-row>
+
+        <el-row :gutter="32">
+            <el-col :lg="24" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input autosize placeholder="docker run 命令" type="textarea" v-model="command">
+                    </el-input>
+                </div>
+            </el-col>
+        </el-row>
+    </div>
+</div>
 </body>
+<script src="https://fastly.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+<script src="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/index.min.js"></script>
+<script>
+    function StringBuffer() {
+        this.buffer = "";
+    }
+
+    StringBuffer.prototype.append = function (string) {
+        this.buffer += string;
+    };
+    StringBuffer.prototype.toString = function () {
+        return this.buffer;
+    };
+    new Vue({
+        el: '#app',
+        data: {
+            name: 'x_redis',
+            redis: '/home/app/',
+            port: '6379',
+            pwd: 'system',
+            command: '',
+        },
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            //调用查询全部数据的操作
+        },
+        mounted() {
+            this.input(null, 1);
+        },
+        methods: {
+            input(event, kind) {
+                if (kind === 1) {
+                    // 根据容器名来变换目录名
+                    this.redis = "/home/app/" + this.name
+                }
+                let sbHtml = new StringBuffer();
+                sbHtml.append('docker run \\\n')
+                sbHtml.append(`  -p ${this.port}:6379 \\\n`)
+                sbHtml.append(`  --name ${this.name} \\\n`)
+                sbHtml.append(`  -v ${this.redis}:/data \\\n`)
+                sbHtml.append('  --privileged=true \\\n')
+                sbHtml.append('  --restart=always \\\n')
+                sbHtml.append('  -e TZ=Asia/Shanghai \\\n')
+                sbHtml.append('  -d redis \\\n')
+                if (this.pwd.length > 0) {
+                    sbHtml.append('  --appendonly yes \\\n')
+                    sbHtml.append(`  --requirepass ${this.pwd}`)
+                } else {
+                    sbHtml.append('  --appendonly yes')
+                }
+                this.command = sbHtml.toString();
+            },
+        }
+    })
+</script>
 </html>

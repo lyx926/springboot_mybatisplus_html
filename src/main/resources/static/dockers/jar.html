@@ -29,14 +29,14 @@
         <el-row :gutter="32">
             <el-col :xs="24" :sm="24" :lg="8">
                 <div class="chart-wrapper">
-                    <el-input v-model="name" placeholder="容器名称 例:[xxx_jar]"
-                              @input="input()"></el-input>
+                    <el-input @input="input($event,1)" placeholder="容器名称 例:[x_jar]"
+                              v-model="name"></el-input>
                 </div>
             </el-col>
             <el-col :xs="24" :sm="24" :lg="8">
                 <div class="chart-wrapper">
-                    <el-input v-model="jar" placeholder="容器目录 例:[/home/app/xxx_jar]"
-                              @input="input()"></el-input>
+                    <el-input @input="input($event,2)" placeholder="容器目录 例:[/home/app/x_jar]"
+                              v-model="jar"></el-input>
                 </div>
             </el-col>
             <el-col :xs="24" :sm="24" :lg="8">
@@ -75,8 +75,8 @@
     new Vue({
         el: '#app',
         data: {
-            name: 'xxx_jar',
-            jar: '/home/app/xxx_jar/jar',
+            name: 'x_jar',
+            jar: '/home/app/',
             port: '8080',
             command: '',
         },
@@ -84,17 +84,25 @@
         created() {
             //调用查询全部数据的操作
         },
+        mounted() {
+            this.input(null, 1);
+        },
         methods: {
-            input() {
+            input(event, kind) {
+                if (kind === 1) {
+                    // 根据容器名来变换目录名
+                    this.jar = "/home/app/" + this.name
+                }
                 let sbHtml = new StringBuffer();
                 sbHtml.append('docker run \\\n')
                 sbHtml.append(`  --name ${this.name} \\\n`)
                 sbHtml.append('  --privileged=true \\\n')
                 sbHtml.append('  --restart=always \\\n')
-                sbHtml.append(`  -v ${this.jar}:/root \\\n`)
+                sbHtml.append(`  -v ${this.jar}/java:/java \\\n`)
                 sbHtml.append(`  -p ${this.port}:8080 \\\n`)
                 sbHtml.append('  -e TZ=Asia/Shanghai \\\n')
-                sbHtml.append('  -d 15588855251/webjar')
+                sbHtml.append('  -itd 15588855251/shjar && \\\n')
+                sbHtml.append(`docker cp ${this.name}:/start.sh ${this.jar}/java`)
                 this.command = sbHtml.toString();
             },
         }

@@ -29,14 +29,14 @@
         <el-row :gutter="32">
             <el-col :xs="24" :sm="24" :lg="8">
                 <div class="chart-wrapper">
-                    <el-input v-model="containerName" placeholder="容器名称 例:[xxx_nginx]"
-                              @input="input()"></el-input>
+                    <el-input @input="input($event,1)" placeholder="容器名称 例:[x_nginx]"
+                              v-model="containerName"></el-input>
                 </div>
             </el-col>
             <el-col :xs="24" :sm="24" :lg="8">
                 <div class="chart-wrapper">
-                    <el-input v-model="containerCert" placeholder="容器目录 例:[/home/app/xxx_nginx]"
-                              @input="input()"></el-input>
+                    <el-input @input="input($event,2)" placeholder="容器目录 例:[/home/app/x_nginx]"
+                              v-model="containerCert"></el-input>
                 </div>
             </el-col>
             <el-col :xs="24" :sm="24" :lg="8">
@@ -134,14 +134,14 @@
                 </div>
             </el-col>
         </el-row>
-        <el-row :gutter="32">
+        <!--<el-row :gutter="32">
             <el-col :xs="24" :sm="24" :lg="24">
                 <div class="chart-wrapper">
                     <el-input type="textarea" autosize placeholder="default.conf 配置" v-model="config">
                     </el-input>
                 </div>
             </el-col>
-        </el-row>
+        </el-row>-->
     </div>
 </div>
 </body>
@@ -161,8 +161,8 @@
     new Vue({
         el: '#app',
         data: {
-            containerName: "xxx_nginx",
-            containerCert: "/home/app/xxx_nginx",
+            containerName: "x_nginx",
+            containerCert: "/home/app/",
             containerPort: "80",
             containerSslPort: "",
             apiUrl: "http://172.17.0.1",
@@ -170,11 +170,14 @@
             servers: [],
             paths: [],
             command: "",
-            config: "",
+            // config: "",
         },
         //钩子函数，VUE对象初始化完成后自动执行
         created() {
             //调用查询全部数据的操作
+        },
+        mounted() {
+            this.input(null, 1);
         },
         methods: {
             addServe() {
@@ -199,10 +202,17 @@
                 this.paths.splice(i, 1);
                 this.input();
             },
-            input() {
+            input(event, kind) {
+                if (kind === 1) {
+                    // 根据容器名来变换目录名
+                    this.containerCert = "/home/app/" + this.containerName
+                }
+                // 制作命令
                 let sbHtml = new StringBuffer();
+
                 sbHtml.append("mkdir -p " + this.containerCert + "/conf.d && \\\n");
                 sbHtml.append("touch " + this.containerCert + "/conf.d/default.conf && \\\n");
+
                 sbHtml.append("docker run \\\n");
                 sbHtml.append("  --name " + this.containerName + " \\\n");
                 sbHtml.append("  --privileged=true \\\n");
@@ -246,127 +256,128 @@
                     sbHtml.append("  -p " + this.containerSslPort + ":443 \\\n");
                 }
                 sbHtml.append("  -e TZ=Asia/Shanghai \\\n");
-                sbHtml.append("  -d nginx:1-alpine-slim");
-                this.command = sbHtml.toString();
-                let sbConfig = new StringBuffer();
-                // ssl配置
+                sbHtml.append("  -d nginx:1-alpine-slim && \\\n");
+
+                // 写入配置文件
+                sbHtml.append("tee " + this.containerCert + "/conf.d/default.conf <<-'EOF'\n");
                 if (String(this.containerSslPort).length > 0) {
-                    sbConfig.append("server {\n");
-                    sbConfig.append("  listen " + this.containerPort + ";\n");
-                    sbConfig.append("  server_name liuyixiang.xyz;\n");
-                    sbConfig.append("  rewrite ^(.*)$ https://$host$1 permanent;\n");
-                    sbConfig.append("}\n\n");
-                    sbConfig.append("server {\n");
-                    sbConfig.append("  listen " + this.containerSslPort + " ssl;\n");
-                    sbConfig.append("  server_name liuyixiang.xyz;\n");
-                    sbConfig.append("  ssl_certificate /etc/nginx/cert/ssl.pem;\n");
-                    sbConfig.append("  ssl_certificate_key /etc/nginx/cert/ssl.key;\n");
-                    sbConfig.append("  ssl_session_timeout 5m;\n");
-                    sbConfig.append("  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;\n");
-                    sbConfig.append("  ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;\n");
-                    sbConfig.append("  ssl_prefer_server_ciphers on;\n\n");
-                    sbConfig.append("  location / {\n");
-                    sbConfig.append("      root   /usr/share/nginx/html;\n");
-                    sbConfig.append("      index  index.html index.htm;\n");
-                    sbConfig.append("      try_files $uri $uri/ /index.html;\n");
-                    sbConfig.append("  }\n\n");
+                    sbHtml.append("server {\n");
+                    sbHtml.append("  listen " + this.containerPort + ";\n");
+                    sbHtml.append("  server_name liuyixiang.xyz;\n");
+                    sbHtml.append("  rewrite ^(.*)$ https://$host$1 permanent;\n");
+                    sbHtml.append("}\n\n");
+                    sbHtml.append("server {\n");
+                    sbHtml.append("  listen " + this.containerSslPort + " ssl;\n");
+                    sbHtml.append("  server_name liuyixiang.xyz;\n");
+                    sbHtml.append("  ssl_certificate /etc/nginx/cert/ssl.pem;\n");
+                    sbHtml.append("  ssl_certificate_key /etc/nginx/cert/ssl.key;\n");
+                    sbHtml.append("  ssl_session_timeout 5m;\n");
+                    sbHtml.append("  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;\n");
+                    sbHtml.append("  ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;\n");
+                    sbHtml.append("  ssl_prefer_server_ciphers on;\n\n");
+                    sbHtml.append("  location / {\n");
+                    sbHtml.append("      root   /usr/share/nginx/html;\n");
+                    sbHtml.append("      index  index.html index.htm;\n");
+                    sbHtml.append("      try_files $uri $uri/ /index.html;\n");
+                    sbHtml.append("  }\n\n");
                     if (String(this.apiPort).length > 0) {
-                        sbConfig.append("  location /prod-api/ {\n");
-                        sbConfig.append("      proxy_set_header Host $http_host;\n");
-                        sbConfig.append("      proxy_set_header X-Real-IP $remote_addr;\n");
-                        sbConfig.append("      proxy_set_header REMOTE-HOST $remote_addr;\n");
-                        sbConfig.append("      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
-                        sbConfig.append("      proxy_pass " + this.apiUrl + ":" + this.apiPort + "/;\n");
-                        sbConfig.append("  }\n\n");
+                        sbHtml.append("  location /prod-api/ {\n");
+                        sbHtml.append("      proxy_set_header Host $http_host;\n");
+                        sbHtml.append("      proxy_set_header X-Real-IP $remote_addr;\n");
+                        sbHtml.append("      proxy_set_header REMOTE-HOST $remote_addr;\n");
+                        sbHtml.append("      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
+                        sbHtml.append("      proxy_pass " + this.apiUrl + ":" + this.apiPort + "/;\n");
+                        sbHtml.append("  }\n\n");
                     }
                     if (this.servers.length > 0) {
                         this.servers.forEach((o) => {
                             if (o.path.length > 0) {
-                                sbConfig.append("  location /" + o.path.split("/")[o.path.split("/")
+                                sbHtml.append("  location /" + o.path.split("/")[o.path.split("/")
                                     .length - 1] + " {\n");
-                                sbConfig.append("      alias /usr/share/nginx/html" + o.path + ";\n");
-                                sbConfig.append("      try_files $uri $uri/ /" + o.path.split("/")[o.path
+                                sbHtml.append("      alias /usr/share/nginx/html" + o.path + ";\n");
+                                sbHtml.append("      try_files $uri $uri/ /" + o.path.split("/")[o.path
                                     .split("/").length - 1] + "/index.html;\n");
-                                sbConfig.append("  }\n\n");
+                                sbHtml.append("  }\n\n");
                             }
                         });
                     }
-                    sbConfig.append("  error_page   500 502 503 504  /50x.html;\n");
-                    sbConfig.append("  location = /50x.html {\n");
-                    sbConfig.append("      root   /usr/share/nginx/html;\n");
-                    sbConfig.append("  }\n");
-                    sbConfig.append("}");
+                    sbHtml.append("  error_page   500 502 503 504  /50x.html;\n");
+                    sbHtml.append("  location = /50x.html {\n");
+                    sbHtml.append("      root   /usr/share/nginx/html;\n");
+                    sbHtml.append("  }\n");
+                    sbHtml.append("}\n");
                     if (this.servers.length > 0) {
                         this.servers.forEach((o) => {
                             if (o.path.length > 0) {
-                                sbConfig.append("\n");
-                                sbConfig.append("\n");
-                                sbConfig.append("server {\n");
-                                sbConfig.append("  listen " + o.port + ";\n");
-                                sbConfig.append("  server_name localhost;\n\n");
-                                sbConfig.append("  location / {\n");
-                                sbConfig.append("      root " + this.containerCert + "/html" + o.path +
+                                sbHtml.append("\n");
+                                sbHtml.append("\n");
+                                sbHtml.append("server {\n");
+                                sbHtml.append("  listen " + o.port + ";\n");
+                                sbHtml.append("  server_name localhost;\n\n");
+                                sbHtml.append("  location / {\n");
+                                sbHtml.append("      root " + this.containerCert + "/html" + o.path +
                                     ";\n");
-                                sbConfig.append("      index index.html index.htm;\n");
-                                sbConfig.append("  }\n");
-                                sbConfig.append("}");
+                                sbHtml.append("      index index.html index.htm;\n");
+                                sbHtml.append("  }\n");
+                                sbHtml.append("}\n");
                             }
                         });
                     }
                 } else { // 80配置
-                    sbConfig.append("server {\n");
-                    sbConfig.append("  listen " + this.containerPort + ";\n");
-                    sbConfig.append("  server_name localhost;\n\n");
-                    sbConfig.append("  location / {\n");
-                    sbConfig.append("      root   /usr/share/nginx/html;\n");
-                    sbConfig.append("      index  index.html index.htm;\n");
-                    sbConfig.append("      try_files $uri $uri/ /index.html;\n");
-                    sbConfig.append("  }\n\n");
+                    sbHtml.append("server {\n");
+                    sbHtml.append("  listen " + this.containerPort + ";\n");
+                    sbHtml.append("  server_name localhost;\n\n");
+                    sbHtml.append("  location / {\n");
+                    sbHtml.append("      root   /usr/share/nginx/html;\n");
+                    sbHtml.append("      index  index.html index.htm;\n");
+                    sbHtml.append("      try_files $uri $uri/ /index.html;\n");
+                    sbHtml.append("  }\n\n");
                     if (String(this.apiPort).length > 0) {
-                        sbConfig.append("  location /prod-api/ {\n");
-                        sbConfig.append("      proxy_set_header Host $http_host;\n");
-                        sbConfig.append("      proxy_set_header X-Real-IP $remote_addr;\n");
-                        sbConfig.append("      proxy_set_header REMOTE-HOST $remote_addr;\n");
-                        sbConfig.append("      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
-                        sbConfig.append("      proxy_pass " + this.apiUrl + ":" + this.apiPort + "/;\n");
-                        sbConfig.append("  }\n\n");
+                        sbHtml.append("  location /prod-api/ {\n");
+                        sbHtml.append("      proxy_set_header Host $http_host;\n");
+                        sbHtml.append("      proxy_set_header X-Real-IP $remote_addr;\n");
+                        sbHtml.append("      proxy_set_header REMOTE-HOST $remote_addr;\n");
+                        sbHtml.append("      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n");
+                        sbHtml.append("      proxy_pass " + this.apiUrl + ":" + this.apiPort + "/;\n");
+                        sbHtml.append("  }\n\n");
                     }
                     if (this.servers.length > 0) {
                         this.servers.forEach((o) => {
                             if (o.path.length > 0) {
-                                sbConfig.append("  location /" + o.path.split("/")[o.path.split("/")
+                                sbHtml.append("  location /" + o.path.split("/")[o.path.split("/")
                                     .length - 1] + " {\n");
-                                sbConfig.append("      alias /usr/share/nginx/html" + o.path + ";\n");
-                                sbConfig.append("      try_files $uri $uri/ /" + o.path.split("/")[o.path
+                                sbHtml.append("      alias /usr/share/nginx/html" + o.path + ";\n");
+                                sbHtml.append("      try_files $uri $uri/ /" + o.path.split("/")[o.path
                                     .split("/").length - 1] + "/index.html;\n");
-                                sbConfig.append("  }\n\n");
+                                sbHtml.append("  }\n\n");
                             }
                         });
                     }
-                    sbConfig.append("  error_page   500 502 503 504  /50x.html;\n");
-                    sbConfig.append("  location = /50x.html {\n");
-                    sbConfig.append("      root   /usr/share/nginx/html;\n");
-                    sbConfig.append("  }\n");
-                    sbConfig.append("}");
+                    sbHtml.append("  error_page   500 502 503 504  /50x.html;\n");
+                    sbHtml.append("  location = /50x.html {\n");
+                    sbHtml.append("      root   /usr/share/nginx/html;\n");
+                    sbHtml.append("  }\n");
+                    sbHtml.append("}\n");
                     if (this.servers.length > 0) {
                         this.servers.forEach((o) => {
                             if (o.path.length > 0) {
-                                sbConfig.append("\n");
-                                sbConfig.append("\n");
-                                sbConfig.append("server {\n");
-                                sbConfig.append("  listen " + o.port + ";\n");
-                                sbConfig.append("  server_name localhost;\n\n");
-                                sbConfig.append("  location / {\n");
-                                sbConfig.append("      root " + this.containerCert + "/html" + o.path +
+                                sbHtml.append("\n");
+                                sbHtml.append("\n");
+                                sbHtml.append("server {\n");
+                                sbHtml.append("  listen " + o.port + ";\n");
+                                sbHtml.append("  server_name localhost;\n\n");
+                                sbHtml.append("  location / {\n");
+                                sbHtml.append("      root " + this.containerCert + "/html" + o.path +
                                     ";\n");
-                                sbConfig.append("      index index.html index.htm;\n");
-                                sbConfig.append("  }\n");
-                                sbConfig.append("}");
+                                sbHtml.append("      index index.html index.htm;\n");
+                                sbHtml.append("  }\n");
+                                sbHtml.append("}\n");
                             }
                         });
                     }
                 }
-                this.config = sbConfig.toString();
+                sbHtml.append("EOF");
+                this.command = sbHtml.toString();
             },
         }
     })
