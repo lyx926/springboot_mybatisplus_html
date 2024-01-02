@@ -108,7 +108,7 @@
                 sbHtml.append('  --privileged=true \\\n')
                 sbHtml.append('  --restart=always \\\n')
                 sbHtml.append('  -e TZ=Asia/Shanghai \\\n')
-                sbHtml.append('  -d redis \\\n')
+                sbHtml.append('  -d redis:latest \\\n')
                 if (this.pwd.length > 0) {
                     sbHtml.append('  --appendonly yes \\\n')
                     sbHtml.append(`  --requirepass ${this.pwd}`)

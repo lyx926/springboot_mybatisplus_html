@@ -256,7 +256,7 @@
                     sbHtml.append("  -p " + this.containerSslPort + ":443 \\\n");
                 }
                 sbHtml.append("  -e TZ=Asia/Shanghai \\\n");
-                sbHtml.append("  -d nginx:1-alpine-slim && \\\n");
+                sbHtml.append("  -d nginx:latest && \\\n");
 
                 // 写入配置文件
                 sbHtml.append("tee " + this.containerCert + "/conf.d/default.conf <<-'EOF'\n");
