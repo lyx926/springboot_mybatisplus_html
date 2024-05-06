@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge" http-equiv="X-UA-Compatible">
+    <title>docker_redis</title>
+    <link href="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/theme-chalk/index.css" rel="stylesheet">
+    <style>
+        .dashboard-editor-container {
+            position: relative;
+        }
+
+        .chart-wrapper {
+            padding: 16px 16px 0;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-wrapper {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="dashboard-editor-container">
+        <el-row :gutter="32">
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="密码 例:[123456]"
+                              v-model="pwd"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="密钥文件名 例:[xxx.pem]"
+                              v-model="file"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="容器端口 例:[22]"
+                              v-model="port"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="本地目录 例:[dist/*]"
+                              v-model="local"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="账号 例:[root]"
+                              v-model="username"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="IP 例:[192.168.10.10]"
+                              v-model="ip"></el-input>
+                </div>
+            </el-col>
+            <el-col :lg="6" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input @input="input()" placeholder="远端目录 例:[/home/app/xxx_nginx/html/dist]"
+                              v-model="remote"></el-input>
+                </div>
+            </el-col>
+
+        </el-row>
+
+        <el-row :gutter="32">
+            <el-col :lg="24" :sm="24" :xs="24">
+                <div class="chart-wrapper">
+                    <el-input autosize placeholder="docker run 命令" type="textarea" v-model="command">
+                    </el-input>
+                </div>
+            </el-col>
+        </el-row>
+    </div>
+</div>
+</body>
+<script src="https://fastly.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+<script src="https://fastly.jsdelivr.net/npm/element-ui@2.15.0/lib/index.min.js"></script>
+<script>
+    function StringBuffer() {
+        this.buffer = "";
+    }
+
+    StringBuffer.prototype.append = function (string) {
+        this.buffer += string;
+    };
+    StringBuffer.prototype.toString = function () {
+        return this.buffer;
+    };
+    new Vue({
+        el: '#app',
+        data: {
+            pwd: '123456',
+            file: 'xxx.pem',
+            port: '22',
+            local: 'dist/*',
+            username: 'root',
+            ip: '192.168.10.10',
+            remote: '/home/app/xxx_nginx/html/dist',
+            command: '',
+        },
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            //调用查询全部数据的操作
+        },
+        mounted() {
+            this.input(null, 1);
+        },
+        methods: {
+            input(event, kind) {
+                /*if (kind === 1) {
+                    // 根据容器名来变换目录名
+                    this.redis = "/home/app/" + this.name
+                }*/
+                let sbHtml = new StringBuffer();
+
+                // scp -i aliyun2024.pem -P 22 -r dist/* root@47.104.183.163:/home/app/lyx_nginx/html/dist
+
+                // scp username@remote_host:source_directory destination
+
+                // scp -r /本地文件 用户名@1ip地址:/远程文件目录/
+
+                // sshpass -p 'password' scp /本地文件 用户名@1ip地址:/远程文件目录/
+
+                if (this.pwd.length > 0) {
+                    // 密码
+                    sbHtml.append(`sshpass -p '${this.pwd}' \\\n`)
+                    sbHtml.append(`scp -P ${this.port} \\\n`)
+                    sbHtml.append(`-r ${this.local} \\\n`)
+                    sbHtml.append(`${this.username}@${this.ip}:${this.remote}`)
+                } else {
+                    // 密钥
+                    sbHtml.append(`scp -i ${this.file} \\\n`)
+                    sbHtml.append(`-P ${this.port} \\\n`)
+                    sbHtml.append(`-r ${this.local} \\\n`)
+                    sbHtml.append(`${this.username}@${this.ip}:${this.remote}`)
+                }
+
+                this.command = sbHtml.toString();
+            },
+        }
+    })
+</script>
+</html>
